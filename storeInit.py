@@ -7,23 +7,11 @@ g = Graph()
 typePLZ = URIRef("http://dbpedia.org/ontology/zipCode")
 typeCounty = URIRef("http://dbpedia.org/ontology/county")
 hasVEK = URIRef("hasVEK")
+isIn = URIRef("isIn")
 g.add( (hasVEK,RDF.type,RDF.Property ) )
 g.add( (hasVEK,RDFS.range,XSD.onNegativeInteger) )
 
-data = get_data("VGR_KreisergebnisseBand3.xlsx")
-vek = data["VEK je Einwohner"]
-# for countyEntry in vek:
-#     # there are some descriptive entries, that we can filter out easily
-#     if len(countyEntry) > 5:
-#         if countyEntry[6] == '3':
-#             if len(str(countyEntry[2])) == 5:
-#                 #print 'Postleitzahlbereich ' + str(countyEntry[2]) + ' Verfügbaren Einkommen pro Einwohner und Jahr in € ' + str(countyEntry[27]) + '\n'
-#                 county = URIRef(str(countyEntry[2]))
-#                 g.add( (county, RDF.type, typeCounty) )
-#                 g.add((county, hasVEK, Literal(countyEntry[27])))
-
-#print g.serialize(format='turtle')
-
+#Parsing the zipCode to county mapping
 data = get_data("AuszugGV1QAktuell.xlsx")
 counties = data["Onlineprodukt_Gemeinden_310317"]
 for community in counties:
@@ -40,3 +28,21 @@ for community in counties:
             if community[14] is not None:
                 print regCode + " " + community[14]
                 zipCode = URIRef(str(community[14]))
+                county = URIRef(regCode)
+                g.add((zipCode,RDF.type, typePLZ))
+                g.add((zipCode, isIn, county))
+
+#Parsing the VEK
+data = get_data("VGR_KreisergebnisseBand3.xlsx")
+vek = data["VEK je Einwohner"]
+for countyEntry in vek:
+    # there are some descriptive entries, that we can filter out easily
+    if len(countyEntry) > 5:
+        if countyEntry[6] == '3':
+            if len(str(countyEntry[2])) == 5:
+                #print 'Postleitzahlbereich ' + str(countyEntry[2]) + ' Verfügbaren Einkommen pro Einwohner und Jahr in € ' + str(countyEntry[27]) + '\n'
+                county = URIRef(str(countyEntry[2]))
+                g.add((county, RDF.type, typeCounty))
+                g.add((county, hasVEK, Literal(countyEntry[27])))
+
+print g.serialize(format='turtle')
