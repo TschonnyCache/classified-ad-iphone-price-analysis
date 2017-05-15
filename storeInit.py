@@ -27,8 +27,16 @@ vek = data["VEK je Einwohner"]
 data = get_data("AuszugGV1QAktuell.xlsx")
 counties = data["Onlineprodukt_Gemeinden_310317"]
 for community in counties:
-    if len(community) > 5:
-        #error parsing "Regionalcode" cus its unicode
+    if len(community) > 13:
+        #Testing if the current row contains a string or not
+        try:
+            regCode = int(str(community[2]))
+        except UnicodeEncodeError:
+            continue
+        except ValueError:
+            continue
         regCode = str(community[2])+str(community[3])+str(community[4])
-        if community[14] is not None:
-            print regCode + " " + community
+        if community[3] is not None:
+            if community[14] is not None:
+                print regCode + " " + community[14]
+                zipCode = URIRef(str(community[14]))
