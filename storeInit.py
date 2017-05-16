@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from pyexcel_xlsx import get_data
-from rdflib import Graph, BNode, URIRef, Literal, RDF, RDFS, XSD, Namespace
+from rdflib import Graph, URIRef, Literal, RDF, RDFS, XSD, Namespace
+from rdflib.plugins.sparql import prepareQuery
 
 ns = Namespace("sw-kreusch")
 g = Graph()
 typePLZ = URIRef("http://dbpedia.org/ontology/zipCode")
 typeCounty = URIRef("http://dbpedia.org/ontology/county")
 hasVEK = URIRef("hasVEK")
-isIn = URIRef("isIn")
+isInCounty = URIRef("isInisInCounty")
 g.add( (hasVEK,RDF.type,RDF.Property ) )
 g.add( (hasVEK,RDFS.range,XSD.onNegativeInteger) )
 
@@ -26,11 +27,11 @@ for community in counties:
         regCode = str(community[2])+str(community[3])+str(community[4])
         if community[3] is not None:
             if community[14] is not None:
-                print regCode + " " + community[14]
+                #print regCode + " " + community[14]
                 zipCode = URIRef(str(community[14]))
                 county = URIRef(regCode)
                 g.add((zipCode,RDF.type, typePLZ))
-                g.add((zipCode, isIn, county))
+                g.add((zipCode, isInCounty, county))
 
 #Parsing the VEK
 data = get_data("VGR_KreisergebnisseBand3.xlsx")
@@ -42,7 +43,10 @@ for countyEntry in vek:
             if len(str(countyEntry[2])) == 5:
                 #print 'Postleitzahlbereich ' + str(countyEntry[2]) + ' Verfügbaren Einkommen pro Einwohner und Jahr in € ' + str(countyEntry[27]) + '\n'
                 county = URIRef(str(countyEntry[2]))
-                g.add((county, RDF.type, typeCounty))
-                g.add((county, hasVEK, Literal(countyEntry[27])))
+                for zipCode,p,o in g.triples((None, isInCounty, county)):
+                    g.add((zipCode, hasVEK, Literal(countyEntry[27])))
+
+                # g.add((county, RDF.type, typeCounty))
+                # g.add((county, hasVEK, Literal(countyEntry[27])))
 
 print g.serialize(format='turtle')
