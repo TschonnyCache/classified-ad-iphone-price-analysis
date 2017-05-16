@@ -45,4 +45,7 @@ for countyEntry in vek:
                 for zipCode,p,o in g.triples((None, isInCounty, county)):
                     g.add((zipCode, hasVEK, Literal(countyEntry[27])))
 
-print g.serialize(format='turtle')
+#print g.serialize(format='turtle')
+f = open('tripels.ttl','w')
+f.write(g.serialize(format='turtle'))
+f.close()
