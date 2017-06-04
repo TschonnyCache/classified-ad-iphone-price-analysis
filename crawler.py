@@ -1,12 +1,12 @@
+from rdflib import Graph, RDF, URIRef, Literal
 from torrequest import TorRequest
 from bs4 import BeautifulSoup
 import re
 
 
-def crawl(iphoneModels,zipCodes):
+def crawl(iphoneModelString,iPhoneModelResource, zipCode,tr,g):
 
-    with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
-        payload = {'keywords':'iPhone','locationStr':'04103','categoryId':'173','adType':'OFFER'}
+        payload = {'keywords':iphoneModelString,'locationStr':zipCode,'categoryId':'173','adType':'OFFER'}
         response = tr.get('https://www.ebay-kleinanzeigen.de/s-suchanfrage.html', params=payload)
         #r.encoding = 'utf-8'
         #print(r.text)
@@ -14,18 +14,61 @@ def crawl(iphoneModels,zipCodes):
         #f.write(r.text)
         #f.close()
         soup = BeautifulSoup(response.text, 'html.parser')
-        for add in soup.find_all("article", class_="aditem"):
+        for ad in soup.find_all("article", class_="aditem"):
             print 'Id'
-            print add.attrs['data-adid']
+            print ad.attrs['data-adid']
             print 'Titel'
-            print add.contents[3].contents[1].contents[0].contents[0]
+            print ad.contents[3].contents[1].contents[0].contents[0]
             print 'Preis'
-            print re.sub("\D", "", add.contents[5].contents[1].contents[0])
+            print re.sub("\D", "", ad.contents[5].contents[1].contents[0])
             print 'PLZ'
-            print add.contents[5].contents[4].replace(" ", "").strip()
+            print ad.contents[5].contents[4].replace(" ", "").strip()
             print 'Zeit'
-            print add.contents[7].contents[0].replace(" ", "").strip()
+            print ad.contents[7].contents[0].replace(" ", "").strip()
             #todo write to triple store
-        tr.reset_identity()
+
+            adRessource = URIRef("ad:" + ad.attrs['data-adid'])
+            zipCode = URIRef("zipCode:"+ad.contents[5].contents[4].replace(" ", "").strip())
+            price = Literal(re.sub("\D", "", ad.contents[5].contents[1].contents[0]))
+
+            g.add( (adRessource, containsModel, iPhoneModelResource) )
+            g.add( (adRessource, isInZipCode, zipCode) )
+            g.add( (adRessource, hasPrice, price) )
+
+        return g
+
+
 
 #TODO load iPhones.json, query for all iphones, load vek-store, query for all zipCodes, call crawl
+
+containsModel = URIRef("containsModel")
+isInZipCode = URIRef("isInZipCode")
+hasPrice = URIRef("hasPrice")
+
+#iPhoneModelGprah = Graph()
+#iPhoneModelGprah.parse("iphones.json",format="json")
+iPhoneModelStrings = []
+#for model,p,o in iPhoneModelGprah.triples(None,None,None):
+#    iPhoneModelStrings.append(model)
+
+g = Graph()
+g.parse("tripels.ttl", format="turtle")
+typePLZ = URIRef("http://dbpedia.org/ontology/zipCode")
+
+iPhoneModelResource = URIRef("lustigeiPhoneModelResource")
+
+with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
+    i = 0
+    for zipCode,p,o in g.triples((None, RDF.type, typePLZ)):
+        i = i+1
+        zipCode = zipCode.split(':')[1]
+        g = crawl('iPhone 7', iPhoneModelResource, zipCode,tr,g)
+        if i == 2:
+            break;
+        if i == 15:
+            i = 1
+            tr.reset_identity()
+
+f = open('tripels.ttl','w')
+f.write(g.serialize(format='turtle'))
+f.close()

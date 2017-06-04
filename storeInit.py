@@ -27,8 +27,8 @@ for community in counties:
         regCode = str(community[2])+str(community[3])+str(community[4])
         if community[3] is not None:
             if community[14] is not None:
-                zipCode = URIRef(str(community[14]))
-                county = URIRef(regCode)
+                zipCode = URIRef("zipCode:"+str(community[14]))
+                county = URIRef("countyCode:"+regCode)
                 g.add((zipCode,RDF.type, typePLZ))
                 g.add((zipCode, isInCounty, county))
 
@@ -40,7 +40,7 @@ for countyEntry in vek:
     if len(countyEntry) > 5:
         if countyEntry[6] == '3':
             if len(str(countyEntry[2])) == 5:
-                county = URIRef(str(countyEntry[2]))
+                county = URIRef("countyCode:"+ str(countyEntry[2]) )
                 # getting the zipcodes in the current county and adding the vek of the county to the zipcodes
                 for zipCode,p,o in g.triples((None, isInCounty, county)):
                     g.add((zipCode, hasVEK, Literal(countyEntry[27])))
