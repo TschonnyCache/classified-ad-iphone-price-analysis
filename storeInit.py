@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 from pyexcel_xlsx import get_data
 from rdflib import Graph, URIRef, Literal, RDF, RDFS, XSD, Namespace
 
@@ -6,8 +7,10 @@ ns = Namespace("sw-kreusch")
 g = Graph()
 typePLZ = URIRef("http://dbpedia.org/ontology/zipCode")
 typeCounty = URIRef("http://dbpedia.org/ontology/county")
+typeiPhoneModel = URIRef("iPhoneModel")
 hasVEK = URIRef("hasVEK")
 isInCounty = URIRef("isInisInCounty")
+inceptedOn = URIRef("inceptedOn")
 g.add( (hasVEK,RDF.type,RDF.Property ) )
 g.add( (hasVEK,RDFS.range,XSD.onNegativeInteger) )
 
@@ -45,7 +48,18 @@ for countyEntry in vek:
                 for zipCode,p,o in g.triples((None, isInCounty, county)):
                     g.add((zipCode, hasVEK, Literal(countyEntry[27])))
 
-#print g.serialize(format='turtle')
+#Paring iPhone models from query dump
+with open('iphones.json') as data_file:
+    data = json.load(data_file)
+    for model in data:
+        modelRessource = URIRef(model['item'])
+        modelString = Literal(model['itemLabel'])
+        inceptionLiteral = Literal(model['inception'])
+        g.add( (modelRessource,RDF.type,typeiPhoneModel) )
+        g.add( (modelRessource, RDFS.label, modelString) )
+        g.add( (modelRessource,inceptedOn,inceptionLiteral) )
+
+#writing out the graph
 f = open('tripels.ttl','w')
 f.write(g.serialize(format='turtle'))
 f.close()
