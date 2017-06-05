@@ -1,4 +1,4 @@
-from rdflib import Graph, RDF, URIRef, Literal
+from rdflib import Graph, RDF, URIRef, Literal, RDFS, Namespace
 from torrequest import TorRequest
 from bs4 import BeautifulSoup
 import re
@@ -16,7 +16,7 @@ def crawl(iphoneModelString,iPhoneModelResource, zipCode,tr,g):
         soup = BeautifulSoup(response.text, 'html.parser')
         for ad in soup.find_all("article", class_="aditem"):
 
-            if ad.contents[3].contents[1].contents[0].contents[0] > 40:
+            if int(re.sub("\D", "", ad.contents[5].contents[1].contents[0])) > 40:
                 print 'Id'
                 print ad.attrs['data-adid']
                 print 'Titel'
@@ -42,17 +42,12 @@ def crawl(iphoneModelString,iPhoneModelResource, zipCode,tr,g):
 
 #TODO load iPhones.json, query for all iphones, load vek-store, query for all zipCodes, call crawl
 
+ns = Namespace("sw-kreusch")
 containsModel = URIRef("containsModel")
 isInZipCode = URIRef("isInZipCode")
 hasPrice = URIRef("hasPrice")
 typePLZ = URIRef("http://dbpedia.org/ontology/zipCode")
-
-#iPhoneModelGprah = Graph()
-#iPhoneModelGprah.parse("iphones.json",format="json")
-iPhoneModelStrings = []
-#for model,p,o in iPhoneModelGprah.triples(None,None,None):
-#    iPhoneModelStrings.append(model)
-iPhoneModelResource = URIRef("lustigeiPhoneModelResource")
+typeiPhoneModel = URIRef("https://www.wikidata.org/wiki/Q2766")
 
 g = Graph()
 g.parse("tripels.ttl", format="turtle")
@@ -68,7 +63,13 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
     for zipCode,p,o in g.triples((None, RDF.type, typePLZ)):
         i = i+1
         zipCode = zipCode.split(':')[1]
-        g = crawl('iPhone 7', iPhoneModelResource, zipCode,tr,adsGraph)
+
+        for iPhoneModelResource,p,o in g.triples((None, RDF.type , typeiPhoneModel)):
+
+            for s,p,iPhoneLabelString in g.triples((iPhoneModelResource,RDFS.label,None)):
+
+                g = crawl(iPhoneLabelString, iPhoneModelResource, zipCode,tr,adsGraph)
+
         if i == 2:
             break;
         if i == 15:
@@ -76,5 +77,5 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
             tr.reset_identity()
 
 f = open('ads.ttl','w')
-f.write(g.serialize(format='turtle'))
+f.write(adsGraph.serialize(format='turtle'))
 f.close()
