@@ -12,7 +12,7 @@ hasVEK = URIRef("hasVEK")
 isInCounty = URIRef("isInisInCounty")
 inceptedOn = URIRef("inceptedOn")
 g.add( (hasVEK,RDF.type,RDF.Property ) )
-g.add( (hasVEK,RDFS.range,XSD.onNegativeInteger) )
+g.add( (hasVEK,RDFS.range,XSD.nonNegativeInteger) )
 
 #Parsing the zipCode to county mapping
 data = get_data("AuszugGV1QAktuell.xlsx")
