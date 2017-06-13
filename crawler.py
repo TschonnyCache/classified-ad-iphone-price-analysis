@@ -73,7 +73,7 @@ adsGraph = Graph()
 #     pass
 
 with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
-    i = 0
+    i=0
     print str(datetime.now())
     # iterateing over the zip codes
     for zipCode,p,o in backgroundInfo.triples((None, RDF.type, typePLZ)):
@@ -90,9 +90,9 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
         #Debug
         # if i == 10:
         #     break;
-        #Reset the tor identity after 15 zip codes
-        if i == 15:
-            i = 1
+        #Reset the tor identity after i zip codes
+        if i == 3:
+            i = 0
             tr.reset_identity()
     print str(datetime.now())
 f = open('ads' + str(datetime.now()) + '.ttl','w')
