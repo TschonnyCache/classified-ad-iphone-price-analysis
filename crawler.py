@@ -58,10 +58,13 @@ adsGraph = Graph()
 
 with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
     i=0
+    d=0
     print str(datetime.now())
     # iterateing over the zip codes
     for zipCode,p,o in backgroundInfo.triples((None, RDF.type, typePLZ)):
         i = i+1
+        d = d+1
+        print d
         zipCode = zipCode.split(':')[1]
 
         # iterateing over the iphone models
