@@ -3,6 +3,8 @@ from rdflib.util import date_time
 from torrequest import TorRequest
 from bs4 import BeautifulSoup
 from datetime import datetime
+from requests.exceptions import ConnectionError
+import time
 import re
 
 
@@ -72,7 +74,11 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
             # getting the name of the iphone model
             for s,p,iPhoneLabelString in backgroundInfo.triples((iPhoneModelResource, RDFS.label, None)):
                 # crawling and saving result into triples
-                adsGraph = crawl(str(iPhoneLabelString), iPhoneModelResource, zipCode,tr,adsGraph)
+                try:
+                    adsGraph = crawl(str(iPhoneLabelString), iPhoneModelResource, zipCode,tr,adsGraph)
+                except ConnectionError:
+                    time.sleep(600)
+                    continue
 
         #Reset the tor identity after i zip codes
         if i == 3:
