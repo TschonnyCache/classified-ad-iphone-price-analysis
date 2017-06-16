@@ -6,9 +6,9 @@ from datetime import datetime
 import re
 
 
-def crawl(iphoneModelString, iPhoneModelResource, zipCodeSearchString, tr, adsGraph):
+def crawl(zipCodeSearchString, tr, adsGraph):
 
-        payload = {'keywords':iphoneModelString,'locationStr':zipCodeSearchString,'categoryId':'173','adType':'OFFER'}
+        payload = {'keywords':'iPhone','locationStr':zipCodeSearchString,'categoryId':'173','adType':'OFFER'}
         response = tr.get('https://www.ebay-kleinanzeigen.de/s-suchanfrage.html', params=payload)
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -30,13 +30,24 @@ def crawl(iphoneModelString, iPhoneModelResource, zipCodeSearchString, tr, adsGr
                 # filtering "VB Preise"
                 continue
 
-            if  price > 50 and 'Gestern' in time and iphoneModelString.lower() in title.lower() and "reparatur " not in title.lower() and "defekt" not in title.lower():
+            if  price > 50 and 'Gestern' in time and "reparatur " not in title.lower() and "defekt" not in title.lower():
+
+                # finding out which iphone it is:
+                # and iphoneModelString.lower() in title.lower()
+                for tuple in modelList:
+                    if tuple[0].lower() in title.lower():
+                        foundiPhoneModelResource = tuple[1]
+                        break
+                # no model could be detected, i.e. old model
+                else:
+                    break
+
                 adRessource = URIRef("ad:" + adId)
                 zipCodeURI = URIRef("zipCode:"+zipCode)
                 priceLiteral = Literal(price)
                 adTime = Literal(date_time())
 
-                adsGraph.add((adRessource, containsModel, iPhoneModelResource))
+                adsGraph.add((adRessource, containsModel, foundiPhoneModelResource))
                 adsGraph.add((adRessource, isInZipCode, zipCodeURI))
                 adsGraph.add((adRessource, hasPrice, priceLiteral))
                 adsGraph.add((adRessource, postedOn, adTime))
@@ -56,6 +67,21 @@ backgroundInfo.parse("tripels.ttl", format="turtle")
 
 adsGraph = Graph()
 
+modelList = []
+
+# iterateing over the iphone models
+for iPhoneModelResource,p,o in backgroundInfo.triples((None, RDF.type , typeiPhoneModel)):
+    # getting the name of the iphone model
+    for s,p,iPhoneLabelString in backgroundInfo.triples((iPhoneModelResource, RDFS.label, None)):
+        #  and saving result into triples
+        tuple = (str(iPhoneLabelString),iPhoneModelResource)
+        # making shure that the plus models come before the regular ones, this makes it easier to distinguis plus and non plus models
+        if "Plus" in str(iPhoneLabelString):
+            modelList.insert(0,tuple)
+        else:
+            modelList.append(tuple)
+
+
 with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
     i=0
     d=0
@@ -67,12 +93,7 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
         print d
         zipCode = zipCode.split(':')[1]
 
-        # iterateing over the iphone models
-        for iPhoneModelResource,p,o in backgroundInfo.triples((None, RDF.type , typeiPhoneModel)):
-            # getting the name of the iphone model
-            for s,p,iPhoneLabelString in backgroundInfo.triples((iPhoneModelResource, RDFS.label, None)):
-                # crawling and saving result into triples
-                adsGraph = crawl(str(iPhoneLabelString), iPhoneModelResource, zipCode,tr,adsGraph)
+        adsGraph = crawl(zipCode, tr, adsGraph)
 
         #Reset the tor identity after i zip codes
         if i == 3:
