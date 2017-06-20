@@ -3,6 +3,8 @@ from rdflib.util import date_time
 from torrequest import TorRequest
 from bs4 import BeautifulSoup
 from datetime import datetime
+from requests.exceptions import ConnectionError
+import time
 import re
 
 
@@ -32,14 +34,14 @@ def crawl(zipCodeSearchString, tr, adsGraph):
 
             if  price > 50 and 'Gestern' in time and "reparatur " not in title.lower() and "defekt" not in title.lower():
 
-                # finding out which iphone it is:
+                # finding out which iphone is in the ad:
                 # and iphoneModelString.lower() in title.lower()
                 for tuple in modelList:
                     if tuple[0].lower() in title.lower():
                         foundiPhoneModelResource = tuple[1]
                         break
-                # no model could be detected, i.e. old model
                 else:
+                    # no model could be detected, i.e. old model
                     break
 
                 adRessource = URIRef("ad:" + adId)
@@ -92,8 +94,13 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
         d = d+1
         print d
         zipCode = zipCode.split(':')[1]
+        try:
+            adsGraph = crawl(zipCode, tr, adsGraph)
+        except ConnectionError:
+            print ("Connection reset error")
+            time.sleep(600)
+            continue
 
-        adsGraph = crawl(zipCode, tr, adsGraph)
 
         #Reset the tor identity after i zip codes
         if i == 3:
