@@ -7,11 +7,13 @@ from requests.exceptions import ConnectionError
 import time
 import re
 
+def crawl(zipCodeSearchString, tr, adsGraph):
 
-def crawl(iphoneModelString, iPhoneModelResource, zipCodeSearchString, tr, adsGraph):
-
-        payload = {'keywords':iphoneModelString,'locationStr':zipCodeSearchString,'categoryId':'173','adType':'OFFER'}
+        payload = {'keywords':'iPhone','locationStr':zipCodeSearchString,'categoryId':'173','adType':'OFFER'}
         response = tr.get('https://www.ebay-kleinanzeigen.de/s-suchanfrage.html', params=payload)
+
+        todayTimeStamp = time.mktime(datetime.now().replace(hour=12, minute=0, second=0, microsecond=0).timetuple())
+        adTimeLiteral = Literal(date_time(todayTimeStamp))
 
         soup = BeautifulSoup(response.text, 'html.parser')
         for ad in soup.find_all("article", class_="aditem"):
@@ -22,26 +24,36 @@ def crawl(iphoneModelString, iPhoneModelResource, zipCodeSearchString, tr, adsGr
             except IndexError:
                 continue
             try:
-                time = ad.contents[7].contents[0].replace(" ", "").strip()
+                adTimeString = ad.contents[7].contents[0].replace(" ", "").strip()
             except IndexError:
                 continue
-            priceRaw = re.sub("\D", "", ad.contents[5].contents[1].contents[0])
+            #priceRaw = re.sub("\D", "", ad.contents[5].contents[1].contents[0])
             try:
                 price = int(re.sub("\D", "", ad.contents[5].contents[1].contents[0]))
             except ValueError:
                 # filtering "VB Preise"
                 continue
 
-            if  price > 50 and 'Gestern' in time and iphoneModelString.lower() in title.lower() and "reparatur " not in title.lower() and "defekt" not in title.lower():
+            if  price > 50 and 'Gestern' in adTimeString and "reparatur " not in title.lower() and "defekt" not in title.lower():
+
+                # finding out which iphone is in the ad:
+                # and iphoneModelString.lower() in title.lower()
+                for tuple in modelList:
+                    if tuple[0].lower() in title.lower():
+                        foundiPhoneModelResource = tuple[1]
+                        break
+                else:
+                    # no model could be detected, i.e. old model
+                    break
+
                 adRessource = URIRef("ad:" + adId)
                 zipCodeURI = URIRef("zipCode:"+zipCode)
                 priceLiteral = Literal(price)
-                adTime = Literal(date_time())
 
-                adsGraph.add((adRessource, containsModel, iPhoneModelResource))
+                adsGraph.add((adRessource, containsModel, foundiPhoneModelResource))
                 adsGraph.add((adRessource, isInZipCode, zipCodeURI))
                 adsGraph.add((adRessource, hasPrice, priceLiteral))
-                adsGraph.add((adRessource, postedOn, adTime))
+                adsGraph.add((adRessource, postedOn, adTimeLiteral))
 
         return adsGraph
 
@@ -58,6 +70,21 @@ backgroundInfo.parse("tripels.ttl", format="turtle")
 
 adsGraph = Graph()
 
+modelList = []
+
+# iterateing over the iphone models
+for iPhoneModelResource,p,o in backgroundInfo.triples((None, RDF.type , typeiPhoneModel)):
+    # getting the name of the iphone model
+    for s,p,iPhoneLabelString in backgroundInfo.triples((iPhoneModelResource, RDFS.label, None)):
+        #  and saving result into triples
+        tuple = (str(iPhoneLabelString),iPhoneModelResource)
+        # making shure that the plus models come before the regular ones, this makes it easier to distinguis plus and non plus models
+        if "Plus" in str(iPhoneLabelString):
+            modelList.insert(0,tuple)
+        else:
+            modelList.append(tuple)
+
+
 with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
     i=0
     d=0
@@ -68,17 +95,15 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
         d = d+1
         print d
         zipCode = zipCode.split(':')[1]
+        try:
+            adsGraph = crawl(zipCode, tr, adsGraph)
+        except ConnectionError:
+            print ("Connection reset error")
+            time.sleep(600)
+            continue
 
-        # iterateing over the iphone models
-        for iPhoneModelResource,p,o in backgroundInfo.triples((None, RDF.type , typeiPhoneModel)):
-            # getting the name of the iphone model
-            for s,p,iPhoneLabelString in backgroundInfo.triples((iPhoneModelResource, RDFS.label, None)):
-                # crawling and saving result into triples
-                try:
-                    adsGraph = crawl(str(iPhoneLabelString), iPhoneModelResource, zipCode,tr,adsGraph)
-                except ConnectionError:
-                    time.sleep(600)
-                    continue
+        #if d == 10:
+        #    break
 
         #Reset the tor identity after i zip codes
         if i == 3:
