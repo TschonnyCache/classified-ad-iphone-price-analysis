@@ -7,11 +7,13 @@ from requests.exceptions import ConnectionError
 import time
 import re
 
-
 def crawl(zipCodeSearchString, tr, adsGraph):
 
         payload = {'keywords':'iPhone','locationStr':zipCodeSearchString,'categoryId':'173','adType':'OFFER'}
         response = tr.get('https://www.ebay-kleinanzeigen.de/s-suchanfrage.html', params=payload)
+
+        todayTimeStamp = time.mktime(datetime.now().replace(hour=12, minute=0, second=0, microsecond=0).timetuple())
+        adTimeLiteral = Literal(date_time(todayTimeStamp))
 
         soup = BeautifulSoup(response.text, 'html.parser')
         for ad in soup.find_all("article", class_="aditem"):
@@ -22,17 +24,17 @@ def crawl(zipCodeSearchString, tr, adsGraph):
             except IndexError:
                 continue
             try:
-                time = ad.contents[7].contents[0].replace(" ", "").strip()
+                adTimeString = ad.contents[7].contents[0].replace(" ", "").strip()
             except IndexError:
                 continue
-            priceRaw = re.sub("\D", "", ad.contents[5].contents[1].contents[0])
+            #priceRaw = re.sub("\D", "", ad.contents[5].contents[1].contents[0])
             try:
                 price = int(re.sub("\D", "", ad.contents[5].contents[1].contents[0]))
             except ValueError:
                 # filtering "VB Preise"
                 continue
 
-            if  price > 50 and 'Gestern' in time and "reparatur " not in title.lower() and "defekt" not in title.lower():
+            if  price > 50 and 'Gestern' in adTimeString and "reparatur " not in title.lower() and "defekt" not in title.lower():
 
                 # finding out which iphone is in the ad:
                 # and iphoneModelString.lower() in title.lower()
@@ -47,12 +49,11 @@ def crawl(zipCodeSearchString, tr, adsGraph):
                 adRessource = URIRef("ad:" + adId)
                 zipCodeURI = URIRef("zipCode:"+zipCode)
                 priceLiteral = Literal(price)
-                adTime = Literal(date_time())
 
                 adsGraph.add((adRessource, containsModel, foundiPhoneModelResource))
                 adsGraph.add((adRessource, isInZipCode, zipCodeURI))
                 adsGraph.add((adRessource, hasPrice, priceLiteral))
-                adsGraph.add((adRessource, postedOn, adTime))
+                adsGraph.add((adRessource, postedOn, adTimeLiteral))
 
         return adsGraph
 
@@ -101,6 +102,8 @@ with TorRequest(proxy_port=9050, ctrl_port=9051, password=None) as tr:
             time.sleep(600)
             continue
 
+        #if d == 10:
+        #    break
 
         #Reset the tor identity after i zip codes
         if i == 3:
