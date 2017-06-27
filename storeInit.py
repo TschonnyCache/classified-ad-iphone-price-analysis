@@ -28,12 +28,21 @@ for community in counties:
             continue
         #concatenating the regCode/county code
         regCode = str(community[2])+str(community[3])+str(community[4])
+        county = URIRef("countyCode:" + regCode)
         if community[3] is not None:
+            #if the entry contains a community, add its zipcode
             if community[14] is not None:
                 zipCode = URIRef("zipCode:"+str(community[14]))
-                county = URIRef("countyCode:"+regCode)
-                g.add((zipCode,RDF.type, typePLZ))
+                g.add((zipCode, RDF.type, typePLZ))
                 g.add((zipCode, isInCounty, county))
+    # if the entry contains the name of the county
+    elif len(community) == 8 :
+        if community[5] is None and community[4] is not None:
+            regCode = str(community[2]) + str(community[3]) + str(community[4])
+            county = URIRef("countyCode:" + regCode)
+            countyName = community[7]
+            g.add((county, RDF.type, typeCounty))
+            g.add((county, RDFS.label, Literal(countyName)))
 
 #Parsing the VEK
 data = get_data("VGR_KreisergebnisseBand3.xlsx")
@@ -44,11 +53,12 @@ for countyEntry in vek:
         if countyEntry[6] == '3':
             if len(str(countyEntry[2])) == 5:
                 county = URIRef("countyCode:"+ str(countyEntry[2]) )
+                g.add((county,hasVEK, Literal(countyEntry[27])))
                 # getting the zipcodes in the current county and adding the vek of the county to the zipcodes
                 for zipCode,p,o in g.triples((None, isInCounty, county)):
                     g.add((zipCode, hasVEK, Literal(countyEntry[27])))
 
-#Paring iPhone models from query dump
+#Parsing iPhone models from query dump
 with open('iphones.json') as data_file:
     data = json.load(data_file)
     for model in data:
