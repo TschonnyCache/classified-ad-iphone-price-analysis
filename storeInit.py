@@ -11,8 +11,10 @@ typeiPhoneModel = URIRef("https://www.wikidata.org/wiki/Q2766")
 hasVEK = URIRef("hasVEK")
 isInCounty = URIRef("isInisInCounty")
 inceptedOn = URIRef("inceptedOn")
-g.add( (hasVEK,RDF.type,RDF.Property ) )
-g.add( (hasVEK,RDFS.range,XSD.nonNegativeInteger) )
+g.add( (hasVEK, RDF.type,RDF.Property ) )
+g.add( (hasVEK, RDFS.range,XSD.nonNegativeInteger) )
+g.add((inceptedOn, RDF.type, RDF.Property))
+g.add((inceptedOn, RDFS.range, XSD.dateTime))
 
 #Parsing the zipCode to county mapping
 data = get_data("AuszugGV1QAktuell.xlsx")
